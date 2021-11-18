@@ -1,0 +1,276 @@
+---
+title: "Campus Recruitment Project"
+author: "Katie Monroe"
+date: "11/17/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(plyr)
+library(gtsummary)
+library(qwraps2)
+library(fBasics)
+library(GGally)
+library(MASS)
+library(randomForest)
+library(e1071)
+library(knitr)
+library(caret)
+library(ggpubr)
+library(htmlTable)
+library(kableExtra)
+library(magick)
+```
+
+### Project Overview 
+
+The three goals are as follows:
+1. Exploratory data analysis
+2. Binary classification of placement
+3. Feature selection analysis 
+
+### Exploratory data analysis 
+
+The variable: 
+1. Gender (gender)
+2. ssc_p (secondary education percentage)
+3. ssc_b (board of education)
+4. hsc_p (higher secondary education percentage)
+5. hsc_b (board of education)
+6. hsc_s (specialization in higher secondary education)
+7. degree_p (degree percentage)
+8. degree_t (under graduation degree field)
+9. workex (work experience)
+10. etest_p (employable test percentage)
+11. Feature specialization (post graduate specialization)
+12. Feature: mba_p (MBA percentage)
+
+We use the following data:
+1. Gender
+2. Secondary Education percentage
+3. Higher Secondary Education Percentage
+4. Specialization in Higher Secondary Education
+5. Under Graduate Degree Percentage
+6. Under Graduation Degree Field
+7. Work Experience
+8. Employable Test Percentage
+9. Specialization
+10. MBA Percentage
+
+### The first step is to prepare the data
+
+```{r}
+#read in the data
+data <- read.csv("Placement_Data_Full_Class.csv",
+         sep = ",", header = TRUE)
+
+#remove sl_no, ssc_b, hsc_p, sl_no, salary, status 
+visdata <- subset(data, select = -c(sl_no, ssc_b, hsc_b, sl_no, salary))
+
+#create visual analysis 
+visdata %>% tbl_summary() %>% add_stat_label()
+
+```
+
+### Then create visualizations for categorical data first (need to add tables)
+```{r}
+
+#for gender 
+
+#rename gender 
+visdata$gender[visdata$gender == "M"] <- "Male"
+visdata$gender[visdata$gender == "F"] <- "Female"
+
+#create table and data frame
+table(visdata$gender, visdata$status)
+gender <- data.frame(Gender = c("Female", "Male", "Female", "Male"), Count = c(28, 39, 48, 100), Placement = c("Not Placed", "Not Placed", "Placed", "Placed"))
+
+#create plot
+g1 <- ggplot(gender, aes(x= Gender, y = Count, fill = Placement))+
+  geom_bar(stat = "identity", color = "black", position="dodge")+
+  geom_text(aes(label=Count), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  theme_classic()+
+   scale_fill_manual(values = c("honeydew2", "forestgreen"))+
+  labs(title = "Barplot by Gender")
+
+#for hsc_s (specialization in higher secondary education)
+#create table and data frame
+table(visdata$hsc_s, visdata$status)
+special <- data.frame(specialization = c("Arts", "Commerce", "Science", "Arts", "Commerce", "Science"), Count =c(5,34,28,6,79,63), Placement = c("Not Placed","Not Placed","Not Placed", "Placed","Placed","Placed"))
+
+#create plot
+g2 <- ggplot(special, aes(x= specialization, y = Count, fill = Placement))+
+  geom_bar(stat = "identity", color = "black", position="dodge")+
+  geom_text(aes(label=Count), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  theme_classic()+
+   scale_fill_manual(values = c("honeydew2", "forestgreen"))+
+  labs(title = "Barplot by Specialization in Higher Secondary Education")
+
+
+#for degree_t (under graduation degree field)
+#create table and data frame
+table(visdata$degree_t, visdata$status)
+GraduateDegree <- data.frame(Degree = c("Comm&Mgmt", "Others", "Sci&Tech","Comm&Mgmt", "Others", "Sci&Tech"), Count =c(43,6,18,102,5,41), Placement = c("Not Placed","Not Placed","Not Placed", "Placed","Placed","Placed"))
+
+#create plot
+g3 <- ggplot(GraduateDegree, aes(x= Degree, y = Count, fill = Placement))+
+  geom_bar(stat = "identity", color = "black", position="dodge")+
+  geom_text(aes(label=Count), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  theme_classic()+
+   scale_fill_manual(values = c("honeydew2", "forestgreen"))+
+  labs(title = "Barplot by Under Graduation Degree Field")
+
+
+#for workex (Work Experience)
+#create table and data frame
+table(visdata$workex, visdata$status)
+WorkExperience <- data.frame(Experience = c("No", "Yes", "No","Yes"), Count =c(57,10,84,64), Placement = c("Not Placed","Not Placed","Placed","Placed"))
+
+#create plot
+g4 <- ggplot(WorkExperience, aes(x= Experience, y = Count, fill = Placement))+
+  geom_bar(stat = "identity", color = "black", position="dodge")+
+  geom_text(aes(label=Count), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  theme_classic()+
+   scale_fill_manual(values = c("honeydew2", "forestgreen"))+
+  labs(title = "Barplot by Work Experience")
+
+#For Feature Specialization (post grad specialization)
+#create table and data frame
+table(visdata$specialisation, visdata$status)
+PostGradSpecialization <- data.frame(PostSpecial = c("Mkt&Fin", "Mkt&Hr", "Mkt&Fin","Mkt&Hr"), Count =c(25,42,95,53), Placement = c("Not Placed","Not Placed","Placed","Placed"))
+
+#create plot
+g5 <- ggplot(PostGradSpecialization, aes(x= PostSpecial, y = Count, fill = Placement))+
+  geom_bar(stat = "identity", color = "black", position="dodge")+
+  geom_text(aes(label=Count), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  theme_classic()+
+   scale_fill_manual(values = c("honeydew2", "forestgreen"))+
+  labs(title = "Barplot by Post Grad Specialization")
+
+
+```
+
+
+### Now do numerical variables 
+
+```{r}
+
+#for ssc_p (secondary education percentage)
+
+g6 <- ggplot(visdata, aes(x = ssc_p, fill = status)) + 
+  geom_density(alpha = 0.6) + 
+  theme_classic() +
+  labs(title = "Histogram of Secondary Education Percentage")+
+  scale_fill_manual(values = c("honeydew2", "forestgreen"))
+
+#for hsc_p (higher secondary education percentage)
+
+g7 <- ggplot(visdata, aes(x = hsc_p, fill = status)) + 
+  geom_density(alpha = 0.6) + 
+  theme_classic() +
+  labs(title = "Histogram of Higher Secondary Education Percentage")+
+  scale_fill_manual(values = c("honeydew2", "forestgreen"))
+
+#for degree_p (degree percentage)
+
+g8 <- ggplot(visdata, aes(x = degree_p, fill = status)) + 
+  geom_density(alpha = 0.6) + 
+  theme_classic() +
+  labs(title = "Histogram of Degree Percentage")+
+  scale_fill_manual(values = c("honeydew2", "forestgreen"))
+
+#for etest_p (employability test percentage)
+
+g9 <- ggplot(visdata, aes(x = etest_p, fill = status)) + 
+  geom_density(alpha = 0.6) + 
+  theme_classic() +
+  labs(title = "Histogram of Employability Test Percentage")+
+  scale_fill_manual(values = c("honeydew2", "forestgreen"))
+
+#for mba_p (MBA percentage)
+
+g10 <- ggplot(visdata, aes(x = mba_p, fill = status)) + 
+  geom_density(alpha = 0.6) + 
+  theme_classic() +
+  labs(title = "Histogram of MBA Percentage")+
+  scale_fill_manual(values = c("honeydew2", "forestgreen"))
+
+#correlations for numerical data
+
+g11 <- ggpairs(numdata)
+
+### summary table for numerical data
+nums <- unlist(lapply(visdata, is.numeric))
+numdata <- visdata[ , nums]
+basicStats(numdata)
+
+
+```
+
+
+### Classification and Feature Selection
+
+```{r}
+
+#split into training and testing
+set.seed(300)
+visdata$status <- as.factor(visdata$status)
+ind <- sample(2, nrow(visdata), replace = TRUE, prob = c(0.75, 0.25))
+train <- visdata[ind==1,]
+test <- visdata[ind==2,]
+
+#create models
+#glm
+glmm <- train(status ~ .,data=train,method="glm")
+
+#create table
+glmp <- predict(glmm, test)
+kable(table(glmp, test$status))
+
+#this saves the table
+# htmlTable(table(glmp, test$status)) %>%
+#  save_kable(file = "glmtable.png")
+
+#show variable importance
+V1 <- varImp(glmm)
+
+g12 <- plot(V1, col = "darkgreen", main = "General Linear Model Feature Importance")
+
+#random forest
+
+#create model
+rfm <- train(status ~ .,data=train,method="rf")
+
+#create table
+rfp <- predict(rfm, test)
+table(rfp, test$status)
+
+#create table
+table(glmp, test$status)
+
+#this saves the table
+# htmlTable(table(rfp, test$status)) %>%
+#  save_kable(file = "rftable.png")
+# print(col.names(V))
+
+#show variable importance
+
+V2 <- varImp(rfm)
+plot(V2, col = "darkgreen", main = "Random Forest Model Feature Importance")
+```
+
+
+
+
+
+
+
+
