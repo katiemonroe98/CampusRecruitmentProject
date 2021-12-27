@@ -1,0 +1,311 @@
+---
+title: "Avacado Visualization"
+author: "Katie Monroe"
+output: word_document
+---
+
+
+```{r setup, include=FALSE}
+#load in the packages
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2) 
+library(ggridges)
+library(plotrix)
+library(lessR)
+library(GGally)
+library(dplyr)
+library(ggfortify)
+library(zoo)
+library(ggthemes)
+library(forecast)
+library(cowplot)
+library(gridExtra)
+library(ggpubr)
+```
+
+```{r}
+#read in the data 
+data <- read.csv("avocado.csv",
+         sep = ",", header = TRUE)
+
+View(data)
+#create date columns
+dates <- as.Date(data$Date)
+datesdf <- data.frame(date = dates,
+                 year = as.numeric(format(dates, format = "%Y")),
+                 month = as.numeric(format(dates, format = "%m")),
+                 day = as.numeric(format(dates, format = "%d")))
+
+datesdf <- datesdf[,2:4]
+data <- cbind(data, datesdf)
+
+#remove 2018
+data <- subset(data, year != c("2018"))
+
+#split by conventional and organic 
+convent <- subset(data, type == "conventional")
+organic <- subset(data, type == "organic")
+
+```
+
+Overall histogram and density plots
+```{r}
+
+#histograms for each type of avocado for prices
+
+#conventional
+chist <- ggplot(convent, aes(x=AveragePrice))+
+  geom_histogram(color="peachpuff4", fill="wheat")+
+  theme_classic()
+
+cdens <- ggplot(convent, aes(x=AveragePrice))+
+  geom_density(color="peachpuff4", fill="olivedrab3")+
+  theme_classic()
+
+
+#organic
+ohist <- ggplot(organic, aes(x=AveragePrice))+
+  geom_histogram(color="peachpuff4", fill="wheat")+
+  theme_classic()
+
+odens <- ggplot(organic, aes(x=AveragePrice))+
+  geom_density(color="peachpuff4", fill="olivedrab3")+
+  theme_classic()
+
+#comparisons
+grid.arrange(chist, ohist, ncol=2, top = "Conventional vs Organic Avocados")
+grid.arrange(cdens, odens, ncol=2, top= "Conventional vs Organic Avocados")
+
+
+```
+
+Violin and box plots
+```{r}
+
+#violin plots for conventional
+cviolin <- ggplot(convent, aes(x=as.factor(month), y=AveragePrice, fill = as.factor(month)))+
+  geom_violin(fill=c("tomato4"))+
+  theme_classic()+ facet_grid(~ year) +
+  labs(x= "Month")
+  
+
+#violin plots for organic
+oviolin <- ggplot(organic, aes(x=as.factor(month), y=AveragePrice, fill = as.factor(month)))+
+  geom_violin(fill ="tomato4")+
+  theme_classic()+ facet_grid(~ year)+
+  labs(x= "Month")
+
+
+#boxplots for conventional
+cboxes <- ggplot(convent, aes(x=as.factor(month), y=AveragePrice, fill = as.factor(month)))+
+  geom_boxplot(notch=TRUE, fill = "darkolivegreen4")+
+  theme_classic()+ facet_grid(~ year)+
+  labs(x= "Month")
+
+#boxplots for organic
+oboxes <- ggplot(organic, aes(x=as.factor(month), y=AveragePrice, fill = as.factor(month)))+
+  geom_boxplot(notch=TRUE, fill = "darkolivegreen4")+
+  theme_classic()+ facet_grid(~ year)+
+  labs(x= "Month")
+
+#create plots
+grid.arrange(cviolin, oviolin, ncol=2, top= "Conventional vs Organic Avocados")
+grid.arrange(cboxes, oboxes, ncol=2, top= "Conventional vs Organic Avocados")
+
+```
+
+scatterplot
+```{r}
+
+#for organic
+oavg <- ggplot(organic, aes(x=month, y=AveragePrice)) + geom_point() +
+  stat_summary(aes(y = AveragePrice,group=1), fun=mean, colour="limegreen", geom="line",group=1, size=2)+
+  facet_grid(~ year)+theme_classic()
+
+#for conventional
+cavg <- ggplot(convent, aes(x=month, y=AveragePrice)) + geom_point() +
+  stat_summary(aes(y = AveragePrice,group=1), fun=mean, colour="limegreen", geom="line",group=1, size=2)+
+  facet_grid(~ year)+theme_classic()
+
+#ridge plot
+#for organic
+orid <- ggplot(organic, aes(x = AveragePrice, y = region, fill = region)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none", axis.text = element_text(size=5))
+
+#for conventional
+crid <- ggplot(convent, aes(x = AveragePrice, y = region, fill = region)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none",axis.text = element_text(size=5))
+
+#create plots
+grid.arrange(cavg, oavg, ncol=2, top= "Conventional vs Organic Avocados")
+grid.arrange(crid, orid, ncol=2, top= "Conventional vs Organic Avocados")
+
+```
+
+lollipop plot to show prices 
+```{r}
+
+lollipops <- tapply(organic$AveragePrice, list(organic$month, organic$year), max)
+lollipops <- data.frame(lollipops)
+lollipops$months <- c(1:12)
+
+olol15 <- ggplot(lollipops, aes(x=months, y=X2015)) +
+  geom_segment( aes(x=months, xend=months, y=2.5, yend=X2015), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2015 Prices")+
+  geom_line(aes(y=2.5))+
+  theme_classic()
+
+olol16 <- ggplot(lollipops, aes(x=months, y=X2016)) +
+  geom_segment( aes(x=months, xend=months, y=2.5, yend=X2016), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2016 Prices")+
+  geom_line(aes(y=2.5))+
+  theme_classic()
+
+olol17 <- ggplot(lollipops, aes(x=months, y=X2017)) +
+  geom_segment( aes(x=months, xend=months, y=2.5, yend=X2017), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2017 Prices")+ 
+  geom_line(aes(y=2.5))+
+  theme_classic()
+
+#repeat for conventional
+lollipops1 <- tapply(convent$AveragePrice, list(convent$month, convent$year), max)
+lollipops1 <- data.frame(lollipops1)
+lollipops1$months <- c(1:12)
+
+clol15 <- ggplot(lollipops1, aes(x=months, y=X2015)) +
+  geom_segment( aes(x=months, xend=months, y=1.5, yend=X2015), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2015 Prices")+
+  geom_line(aes(y=1.5))+
+  theme_classic()
+
+clol16 <- ggplot(lollipops1, aes(x=months, y=X2016)) +
+  geom_segment( aes(x=months, xend=months, y=1.5, yend=X2016), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2016 Prices")+
+  geom_line(aes(y=1.5))+
+  theme_classic()
+
+clol17 <- ggplot(lollipops1, aes(x=months, y=X2017)) +
+  geom_segment( aes(x=months, xend=months, y=1.8, yend=X2017), color="black") +
+  geom_point( color="khaki4", size=4) +
+  xlab("Months") +
+  ylab("2017 Prices")+ 
+  geom_line(aes(y=1.8))+
+  theme_classic()
+
+#create graphs
+grid.arrange(clol15, clol16,clol17, olol15, olol16,olol17, ncol=3, nrow = 2, top= "Conventional vs Organic Avocados")
+
+```
+
+Density Plots for Volume
+```{r}
+oscatter <- ggplot(organic, aes(x=AveragePrice, y=Total.Volume) ) +
+  geom_point(color = "cornsilk2") +
+  theme_classic()+
+  facet_grid(~ year)
+
+cscatter <- ggplot(convent, aes(x=AveragePrice, y=Total.Volume) ) +
+  geom_point(color = "cornsilk2") +
+  theme_classic()+
+  facet_grid(~ year)
+
+
+grid.arrange(cscatter, oscatter, ncol=2,top= "Conventional vs Organic Avocados")
+```
+
+time series and time series polar
+```{r}
+
+#convert to ts data
+cprice <- convent %>% select(type,year, month, AveragePrice) %>% group_by(year, month) %>% summarize(avg=mean(AveragePrice))
+cts <- ts(cprice$avg, start=2015, frequency=12)
+
+oprice <- organic %>% select(type,year, month, AveragePrice) %>% group_by(year, month) %>% summarize(avg=mean(AveragePrice))
+ots <- ts(oprice$avg, start=2015, frequency=12)
+
+#create time series plots
+cyearts <- ggseasonplot(cts, year.labels=TRUE)  + 
+  scale_color_manual(values=c("peru","firebrick2", "olivedrab"))+
+  theme_classic()+
+  ggtitle("") +
+  labs(y= "Conventional Price")
+
+oyearts <- ggseasonplot(ots, year.labels=TRUE)  + 
+  scale_color_manual(values=c("peru","firebrick2", "olivedrab"))+
+  theme_classic()+
+  ggtitle("") +
+  labs(y= "Organic Price")
+
+grid.arrange(cyearts, oyearts, ncol=2,top= "Conventional vs Organic Avocados")
+
+#polar plots
+cpolar <- ggseasonplot(cts, year.labels=TRUE, polar = TRUE)  + 
+  scale_color_manual(values=c("peru","firebrick2", "olivedrab"))+
+  ggtitle("") +
+  labs(y= "Conventional Price")
+
+opolar <- ggseasonplot(ots, year.labels=TRUE, polar = TRUE)  + 
+  scale_color_manual(values=c("peru","firebrick2", "olivedrab"))+
+  ggtitle("") +
+  labs(y= "Conventional Price")
+
+grid.arrange(cpolar, opolar, ncol=2,top= "Conventional vs Organic Avocados")
+```
+
+
+
+
+
+Decomposition plots
+```{r}
+cdecomp <- decompose(cts)
+odecomp <- decompose(ots)
+
+plot(cdecomp)
+plot(odecomp)
+
+```
+
+```{r}
+
+#create arima
+carima <- auto.arima(cts, d=1, D=1)
+oarima <- auto.arima(ots, d=1, D=1)
+
+#create forecast
+cforecast <- forecast(carima, h=24)
+oforecast <- forecast(oarima, h=24)
+
+#create plots
+cauto <- autoplot(cforecast, include=100) +
+  theme_classic()+
+  ggtitle("")+
+  labs(y = "Conventional Forecast")
+
+oauto <- autoplot(oforecast, include=100) +
+  theme_classic()+
+  ggtitle("")+
+  labs(y = "Organic Forecast")
+
+grid.arrange(cauto, oauto, ncol=2,top= "Conventional vs Organic Avocados")
+
+#summarize 
+summary(cforecast)
+summary(oforecast)
+
+
+```
