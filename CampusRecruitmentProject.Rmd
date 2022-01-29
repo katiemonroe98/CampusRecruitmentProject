@@ -7,7 +7,6 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 library(ggplot2)
 library(plyr)
 library(gtsummary)
@@ -205,11 +204,12 @@ g10 <- ggplot(visdata, aes(x = mba_p, fill = status)) +
 
 #correlations for numerical data
 
+nums <- unlist(lapply(visdata, is.numeric))
+numdata <- visdata[ , nums]
+
 g11 <- ggpairs(numdata)
 
 ### summary table for numerical data
-nums <- unlist(lapply(visdata, is.numeric))
-numdata <- visdata[ , nums]
 basicStats(numdata)
 
 
@@ -257,9 +257,9 @@ table(rfp, test$status)
 table(glmp, test$status)
 
 #this saves the table
-# htmlTable(table(rfp, test$status)) %>%
-#  save_kable(file = "rftable.png")
-# print(col.names(V))
+htmlTable(table(rfp, test$status)) %>%
+ save_kable(file = "rftable.png")
+
 
 #show variable importance
 
